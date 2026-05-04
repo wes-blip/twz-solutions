@@ -1,4 +1,4 @@
-import { useSession } from '@clerk/clerk-react'
+import { useAuth } from '@clerk/clerk-react'
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 import { useMemo } from 'react'
 
@@ -12,14 +12,16 @@ if (!url || !anonKey) {
 }
 
 export function useSupabase(): SupabaseClient {
-  const { session } = useSession()
+  const { getToken } = useAuth()
 
   return useMemo(
     () =>
       createClient(url, anonKey, {
         global: {
           fetch: async (input, init) => {
-            const token = await session?.getToken({ template: 'supabase' })
+            const token = await getToken({ template: 'supabase' })
+            // Remove or redact after debugging — avoid logging full JWTs in production.
+            console.log('CLERK TOKEN:', token)
             const headers = new Headers(init?.headers ?? undefined)
             if (token) {
               headers.set('Authorization', `Bearer ${token}`)
@@ -28,6 +30,6 @@ export function useSupabase(): SupabaseClient {
           },
         },
       }),
-    [session],
+    [getToken],
   )
 }
