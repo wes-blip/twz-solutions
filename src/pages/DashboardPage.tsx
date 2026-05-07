@@ -388,11 +388,6 @@ export function DashboardPage() {
                   <p className="mt-1 text-sm leading-relaxed text-neutral-400">
                     Use your credits to schedule a focused strategy session.
                   </p>
-                  {nextStrategyCall ? (
-                    <p className="mt-3 text-sm font-medium text-emerald-300/95">
-                      Your next call is on {formatScheduledDate(nextStrategyCall)}
-                    </p>
-                  ) : null}
                 </div>
               </div>
 
@@ -445,6 +440,20 @@ export function DashboardPage() {
                       >
                         Subscribe to schedule your call
                       </Link>
+                    </div>
+                  )
+                }
+                if (nextStrategyCall) {
+                  return (
+                    <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-stretch">
+                      <p className="inline-flex w-fit max-w-full flex-col gap-1 rounded-xl border border-emerald-500/25 bg-emerald-500/10 px-4 py-3 text-sm font-medium text-emerald-200 ring-1 ring-emerald-400/20 sm:flex-row sm:items-center sm:gap-2">
+                        <span className="shrink-0 font-semibold text-emerald-300/95">
+                          Strategy call scheduled for
+                        </span>
+                        <span className="text-emerald-100/95">
+                          {formatScheduledDate(nextStrategyCall)}
+                        </span>
+                      </p>
                     </div>
                   )
                 }
