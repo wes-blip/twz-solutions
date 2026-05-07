@@ -5,6 +5,7 @@ import {
   UserButton,
   useUser,
 } from '@clerk/clerk-react'
+import { Loader2 } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { Link, NavLink, useLocation } from 'react-router-dom'
 
@@ -43,11 +44,14 @@ export function NavigationHeader() {
   const [hasActiveSubscription, setHasActiveSubscription] = useState<
     boolean | null
   >(null)
+  const [stripeCustomerId, setStripeCustomerId] = useState<string | null>(null)
+  const [portalLoading, setPortalLoading] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     if (!isLoaded || !user) {
       setHasActiveSubscription(null)
+      setStripeCustomerId(null)
       return
     }
 
@@ -57,7 +61,7 @@ export function NavigationHeader() {
     async function loadSubscriptionFlag() {
       const { data, error } = await supabase
         .from('clients')
-        .select('has_active_subscription')
+        .select('has_active_subscription, stripe_customer_id')
         .eq('clerk_id', clerkId)
         .maybeSingle()
 
@@ -68,10 +72,16 @@ export function NavigationHeader() {
       if (error) {
         console.error('Supabase clients query failed:', error)
         setHasActiveSubscription(false)
+        setStripeCustomerId(null)
         return
       }
 
       setHasActiveSubscription(Boolean(data?.has_active_subscription))
+      const sid =
+        typeof data?.stripe_customer_id === 'string'
+          ? data.stripe_customer_id.trim()
+          : ''
+      setStripeCustomerId(sid ? sid : null)
     }
 
     void loadSubscriptionFlag()
@@ -98,6 +108,35 @@ export function NavigationHeader() {
   }, [isMenuOpen])
 
   const closeMenu = () => setIsMenuOpen(false)
+
+  async function handleManageSubscriptionClick() {
+    if (!stripeCustomerId || portalLoading) {
+      return
+    }
+    setPortalLoading(true)
+    try {
+      const { data, error } = await supabase.functions.invoke<{
+        url?: string
+      }>('create-portal-session', {
+        body: {
+          stripe_customer_id: stripeCustomerId,
+          return_url: `${window.location.origin}/dashboard`,
+        },
+      })
+      if (error) {
+        console.error('create-portal-session invoke failed:', error)
+        return
+      }
+      const url = data?.url
+      if (typeof url === 'string' && url.length > 0) {
+        window.location.href = url
+        return
+      }
+      console.error('create-portal-session returned no url:', data)
+    } finally {
+      setPortalLoading(false)
+    }
+  }
 
   return (
     <header
@@ -212,21 +251,35 @@ export function NavigationHeader() {
                     Dashboard
                   </NavLink>
                   {hasActiveSubscription === true ? (
-                    <NavLink
-                      to="/subscription"
+                    <button
+                      type="button"
                       role="menuitem"
-                      onClick={closeMenu}
-                      className={({ isActive }) =>
-                        [
-                          'rounded-lg px-4 py-3 text-sm font-semibold transition-colors',
-                          isActive
-                            ? 'bg-accent/12 text-accent'
-                            : 'text-ink-strong hover:bg-stone-100/80',
-                        ].join(' ')
+                      disabled={portalLoading || !stripeCustomerId}
+                      title={
+                        !stripeCustomerId
+                          ? 'Billing account not linked yet'
+                          : undefined
                       }
+                      onClick={() => void handleManageSubscriptionClick()}
+                      className={[
+                        'flex w-full items-center gap-2 rounded-lg px-4 py-3 text-left text-sm font-semibold transition-colors',
+                        portalLoading || !stripeCustomerId
+                          ? 'cursor-not-allowed text-neutral-400'
+                          : 'text-ink-strong hover:bg-stone-100/80',
+                      ].join(' ')}
                     >
-                      Manage Subscription
-                    </NavLink>
+                      {portalLoading ? (
+                        <>
+                          <Loader2
+                            className="size-4 shrink-0 animate-spin text-accent"
+                            aria-hidden
+                          />
+                          <span>Loading…</span>
+                        </>
+                      ) : (
+                        'Manage Subscription'
+                      )}
+                    </button>
                   ) : null}
                 </SignedIn>
               </div>
