@@ -6,7 +6,9 @@ import {
   useUser,
 } from '@clerk/clerk-react'
 import { useEffect, useRef, useState } from 'react'
-import { Link, NavLink } from 'react-router-dom'
+import { Link, NavLink, useLocation } from 'react-router-dom'
+
+import { useSupabase } from '../lib/supabase'
 
 function HamburgerIcon({ open }: { open: boolean }) {
   return (
@@ -33,9 +35,51 @@ function HamburgerIcon({ open }: { open: boolean }) {
 }
 
 export function NavigationHeader() {
-  const { user } = useUser()
+  const { pathname } = useLocation()
+  const isDashboard = pathname === '/dashboard'
+  const supabase = useSupabase()
+  const { user, isLoaded } = useUser()
   const [isMenuOpen, setIsMenuOpen] = useState(false)
+  const [hasActiveSubscription, setHasActiveSubscription] = useState<
+    boolean | null
+  >(null)
   const menuRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!isLoaded || !user) {
+      setHasActiveSubscription(null)
+      return
+    }
+
+    const clerkId = user.id
+    let cancelled = false
+
+    async function loadSubscriptionFlag() {
+      const { data, error } = await supabase
+        .from('clients')
+        .select('has_active_subscription')
+        .eq('clerk_id', clerkId)
+        .maybeSingle()
+
+      if (cancelled) {
+        return
+      }
+
+      if (error) {
+        console.error('Supabase clients query failed:', error)
+        setHasActiveSubscription(false)
+        return
+      }
+
+      setHasActiveSubscription(Boolean(data?.has_active_subscription))
+    }
+
+    void loadSubscriptionFlag()
+
+    return () => {
+      cancelled = true
+    }
+  }, [isLoaded, user, supabase])
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -57,13 +101,21 @@ export function NavigationHeader() {
 
   return (
     <header
-      className="sticky top-0 z-50 border-b border-white/40 bg-white/25 shadow-[0_1px_0_rgba(255,255,255,0.35)_inset] backdrop-blur-xl supports-[backdrop-filter]:bg-white/15"
+      className={
+        isDashboard
+          ? 'sticky top-0 z-50 border-b border-white/10 bg-neutral-950'
+          : 'sticky top-0 z-50 border-b border-border bg-surface'
+      }
       role="banner"
     >
       <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-4 sm:gap-6 sm:px-6 lg:px-8">
         <Link
           to="/"
-          className="-ml-0.5 shrink-0 text-[1.125rem] font-bold tracking-[-0.04em] text-ink-strong transition-colors hover:text-accent focus-visible:rounded-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent sm:text-xl"
+          className={
+            isDashboard
+              ? '-ml-0.5 shrink-0 text-[1.125rem] font-bold tracking-[-0.04em] text-white transition-colors hover:text-neutral-200 focus-visible:rounded-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-white/40 sm:text-xl'
+              : '-ml-0.5 shrink-0 text-[1.125rem] font-bold tracking-[-0.04em] text-ink-strong transition-colors hover:text-ink focus-visible:rounded-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ink-strong sm:text-xl'
+          }
         >
           TWZ Solutions
         </Link>
@@ -79,7 +131,11 @@ export function NavigationHeader() {
             aria-haspopup="true"
             aria-controls="nav-dropdown"
             id="nav-menu-button"
-            className="inline-flex items-center gap-2 rounded-xl border border-white/50 bg-white/40 px-4 py-2.5 text-sm font-semibold text-ink-strong shadow-sm ring-1 ring-black/5 transition-all hover:border-white/80 hover:bg-white/60 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+            className={
+              isDashboard
+                ? 'inline-flex items-center gap-2 rounded-xl border border-white/20 bg-white/5 px-4 py-2.5 text-sm font-semibold text-neutral-100 shadow-sm ring-1 ring-white/10 transition-all hover:border-white/30 hover:bg-white/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/40'
+                : 'inline-flex items-center gap-2 rounded-xl border border-slate-300/90 bg-surface px-4 py-2.5 text-sm font-semibold text-ink-strong shadow-sm ring-1 ring-slate-900/[0.06] transition-all hover:border-slate-400 hover:bg-slate-200/45 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink-strong'
+            }
           >
             <HamburgerIcon open={isMenuOpen} />
             <span>Menu</span>
@@ -155,6 +211,23 @@ export function NavigationHeader() {
                   >
                     Dashboard
                   </NavLink>
+                  {hasActiveSubscription === true ? (
+                    <NavLink
+                      to="/subscription"
+                      role="menuitem"
+                      onClick={closeMenu}
+                      className={({ isActive }) =>
+                        [
+                          'rounded-lg px-4 py-3 text-sm font-semibold transition-colors',
+                          isActive
+                            ? 'bg-accent/12 text-accent'
+                            : 'text-ink-strong hover:bg-stone-100/80',
+                        ].join(' ')
+                      }
+                    >
+                      Manage Subscription
+                    </NavLink>
+                  ) : null}
                 </SignedIn>
               </div>
             </div>
@@ -166,20 +239,32 @@ export function NavigationHeader() {
             <SignInButton mode="modal">
               <button
                 type="button"
-                className="cursor-pointer rounded-lg border border-accent/40 bg-accent/10 px-4 py-2 text-sm font-semibold text-accent shadow-sm transition-colors hover:bg-accent/15 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+                className={
+                  isDashboard
+                    ? 'cursor-pointer rounded-lg border border-white/25 bg-white/10 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-white/15 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/40'
+                    : 'cursor-pointer rounded-lg border border-accent/40 bg-accent/10 px-4 py-2 text-sm font-semibold text-accent shadow-sm transition-colors hover:bg-accent/15 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent'
+                }
               >
                 Client Login
               </button>
             </SignInButton>
           </SignedOut>
           <SignedIn>
-            <span className="max-w-[9rem] truncate text-sm font-semibold text-ink-strong/90 sm:max-w-[14rem]">
+            <span
+              className={
+                isDashboard
+                  ? 'max-w-[9rem] truncate text-sm font-semibold text-neutral-300 sm:max-w-[14rem]'
+                  : 'max-w-[9rem] truncate text-sm font-semibold text-ink-strong sm:max-w-[14rem]'
+              }
+            >
               {user?.firstName ? `Hi, ${user.firstName}!` : 'Hi there!'}
             </span>
             <UserButton
               appearance={{
                 elements: {
-                  avatarBox: 'h-9 w-9 ring-2 ring-white/60',
+                  avatarBox: isDashboard
+                    ? 'h-9 w-9 ring-2 ring-white/25'
+                    : 'h-9 w-9 ring-2 ring-white/60',
                 },
               }}
             />

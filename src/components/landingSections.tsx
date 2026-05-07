@@ -1,6 +1,6 @@
+import { useAuth, useClerk } from '@clerk/clerk-react'
 import { useState, type FormEvent } from 'react'
 import {
-  Activity,
   Bot,
   Check,
   Cog,
@@ -9,7 +9,7 @@ import {
   Stethoscope,
   User,
 } from 'lucide-react'
-import { Link } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom'
 
 export function Hero() {
   const accentPhrase = 'text-accent'
@@ -66,47 +66,121 @@ export function Hero() {
   )
 }
 
-export function DualPath() {
-  const cards = [
-    {
-      title: 'The Problem Solver Plan',
-      icon: Rocket,
-      to: '/subscription' as const,
-      pricing: (
-        <p className="mt-3 text-base font-semibold leading-snug text-ink-strong">
-          <span className="line-through text-gray-400">$100/mo</span>{' '}
-          <span className="text-accent">$50/mo (Founder&apos;s Deal)</span>
-        </p>
-      ),
-      bullets: [
-        'Sign up and set up your active subscription.',
-        'Initial kick-off call to map out goals.',
-        'Monthly check-ins to build new tools, maintain infrastructure, or iterate on existing apps.',
-        'Client portal access to share documents and project details.',
-        'Cancel anytime after the first month.',
-      ],
-    },
-    {
-      title: 'The Custom Build',
-      icon: Cog,
-      to: '/operator-booking' as const,
-      pricing: (
-        <p className="mt-3 text-base font-semibold leading-snug text-ink-strong">
-          Micro-projects from{' '}
-          <span className="line-through text-gray-400">$200</span>{' '}
-          <span className="text-accent">$100</span>. Corporate builds from{' '}
-          <span className="text-accent">$2.5k</span>.
-        </p>
-      ),
-      bullets: [
-        'Best for scoped-out, specific builds or large corporate workflows.',
-        'Projects are priced individually based on a combination of live call strategy and async dev time.',
-        'Receive a dedicated project timeline and deliverable schedule.',
-        'Client portal access to share documents and project details.',
-        'One-off payment structure, no monthly commitment.',
-      ],
-    },
+const dualPathCardClassName =
+  'group flex flex-col rounded-2xl border border-border bg-surface p-6 shadow-sm transition-[transform,box-shadow,border-color,background-color] duration-200 hover:scale-105 hover:border-accent/35 hover:bg-white hover:shadow-lg focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent sm:p-8'
+
+function CustomBuildPathCard() {
+  const { isSignedIn, isLoaded } = useAuth()
+  const clerk = useClerk()
+
+  const title = 'The Custom Build'
+  const Icon = Cog
+  const subtext = (
+    <p className="mt-2 text-sm leading-relaxed text-ink-secondary">
+      Custom quoted projects for specific builds
+    </p>
+  )
+  const pricing = (
+    <p className="mt-3 text-base font-semibold leading-snug text-ink-strong">
+      <span className="text-accent">Starts at $500</span>
+    </p>
+  )
+  const bullets = [
+    'One-time project fee—no recurring subscription.',
+    'Clear start and end dates so you know exactly when work begins and completes.',
+    'Guaranteed completion of the scoped project deliverables.',
+    'Ideal for scoped builds, MVPs, and larger corporate or workflow engagements.',
+    'Pricing shaped by strategy calls and async build time; you get a dedicated timeline and deliverable schedule.',
+    'Client portal access to share documents and project details.',
   ] as const
+
+  const inner = (
+    <>
+      <div className="mb-6 flex h-12 w-12 items-center justify-center rounded-xl border border-border bg-white text-accent transition-colors duration-200 group-hover:border-accent/40">
+        <Icon className="h-6 w-6" strokeWidth={1.5} aria-hidden />
+      </div>
+      <h3 className="text-xl font-semibold tracking-tight text-ink-strong">{title}</h3>
+      {subtext}
+      {pricing}
+      <ul
+        className="mt-4 flex-1 space-y-2 text-sm leading-relaxed text-ink-secondary"
+        role="list"
+      >
+        {bullets.map((line) => (
+          <li key={line} className="flex gap-2.5">
+            <Check
+              className="mt-0.5 h-4 w-4 shrink-0 text-accent"
+              strokeWidth={2.25}
+              aria-hidden
+            />
+            <span>{line}</span>
+          </li>
+        ))}
+      </ul>
+    </>
+  )
+
+  if (!isLoaded) {
+    return (
+      <div
+        className={`${dualPathCardClassName} pointer-events-none opacity-60`}
+        aria-busy="true"
+        aria-label="Loading sign-in state"
+      >
+        {inner}
+      </div>
+    )
+  }
+
+  if (isSignedIn) {
+    return (
+      <Link to="/dashboard?type=custom-build" className={dualPathCardClassName}>
+        {inner}
+      </Link>
+    )
+  }
+
+  return (
+    <button
+      type="button"
+      className={`${dualPathCardClassName} w-full cursor-pointer text-left`}
+      onClick={() =>
+        void clerk.redirectToSignUp({
+          signUpForceRedirectUrl: `${window.location.origin}/dashboard?type=custom-build`,
+        })
+      }
+    >
+      {inner}
+    </button>
+  )
+}
+
+export function DualPath() {
+  const {
+    title: problemSolverTitle,
+    icon: ProblemIcon,
+    to: problemSolverTo,
+    pricing: problemSolverPricing,
+    bullets: problemSolverBullets,
+  } = {
+    title: 'The Problem Solver Plan',
+    icon: Rocket,
+    to: '/subscription' as const,
+    pricing: (
+      <p className="mt-3 text-base font-semibold leading-snug text-ink-strong">
+        <span className="line-through text-gray-400">$100/mo</span>{' '}
+        <span className="text-accent">$50/mo (Founder&apos;s Deal)</span>
+      </p>
+    ),
+    bullets: [
+      'Sign up and set up your active subscription.',
+      'Initial kick-off call to map out goals.',
+      'Great with half-formed ideas or early iterations.',
+      'Monthly check-ins to build new tools, maintain infrastructure, or iterate on existing apps.',
+      'Client portal access to share documents and project details.',
+      'Cancel anytime after the first month.',
+    ],
+  } as const
 
   return (
     <section
@@ -115,36 +189,42 @@ export function DualPath() {
     >
       <div className="mx-auto w-full max-w-6xl">
         <div className="grid grid-cols-1 gap-6 md:grid-cols-2 md:gap-8">
-          {cards.map(({ title, icon: Icon, to, pricing, bullets }) => (
-            <Link
-              key={title}
-              to={to}
-              className="group flex flex-col rounded-2xl border border-border bg-surface p-6 shadow-sm transition-[transform,box-shadow,border-color,background-color] duration-200 hover:scale-105 hover:border-accent/35 hover:bg-white hover:shadow-lg focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent sm:p-8"
+          <Link
+            key={problemSolverTitle}
+            to={problemSolverTo}
+            className={dualPathCardClassName}
+          >
+            <div className="mb-6 flex h-12 w-12 items-center justify-center rounded-xl border border-border bg-white text-accent transition-colors duration-200 group-hover:border-accent/40">
+              <ProblemIcon
+                className="h-6 w-6"
+                strokeWidth={1.5}
+                aria-hidden
+              />
+            </div>
+            <h3 className="text-xl font-semibold tracking-tight text-ink-strong">
+              {problemSolverTitle}
+            </h3>
+            <p className="mt-2 text-sm leading-relaxed text-ink-secondary">
+              Subscription model where we partner with you and build over time
+            </p>
+            {problemSolverPricing}
+            <ul
+              className="mt-4 flex-1 space-y-2 text-sm leading-relaxed text-ink-secondary"
+              role="list"
             >
-              <div className="mb-6 flex h-12 w-12 items-center justify-center rounded-xl border border-border bg-white text-accent transition-colors duration-200 group-hover:border-accent/40">
-                <Icon className="h-6 w-6" strokeWidth={1.5} aria-hidden />
-              </div>
-              <h3 className="text-xl font-semibold tracking-tight text-ink-strong">
-                {title}
-              </h3>
-              {pricing}
-              <ul
-                className="mt-4 flex-1 space-y-2 text-sm leading-relaxed text-ink-secondary"
-                role="list"
-              >
-                {bullets.map((line) => (
-                  <li key={line} className="flex gap-2.5">
-                    <Check
-                      className="mt-0.5 h-4 w-4 shrink-0 text-accent"
-                      strokeWidth={2.25}
-                      aria-hidden
-                    />
-                    <span>{line}</span>
-                  </li>
-                ))}
-              </ul>
-            </Link>
-          ))}
+              {problemSolverBullets.map((line) => (
+                <li key={line} className="flex gap-2.5">
+                  <Check
+                    className="mt-0.5 h-4 w-4 shrink-0 text-accent"
+                    strokeWidth={2.25}
+                    aria-hidden
+                  />
+                  <span>{line}</span>
+                </li>
+              ))}
+            </ul>
+          </Link>
+          <CustomBuildPathCard />
         </div>
       </div>
     </section>
@@ -222,6 +302,9 @@ export function FounderBio() {
   )
 }
 
+const projectCardClassName =
+  'group flex h-full flex-col rounded-2xl border border-border bg-surface p-6 text-inherit no-underline shadow-sm transition-[transform,box-shadow,border-color,background-color] duration-200 hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent sm:p-8'
+
 export function SelectedProjects() {
   const projects = [
     {
@@ -230,6 +313,7 @@ export function SelectedProjects() {
       description:
         "A custom clinical assessment web app built from concept to live in exactly 48 hours. Features a custom webhook integration that pipes complex survey data directly into the client's GoHighLevel (GHL) CRM for instant automated routing.",
       icon: Stethoscope,
+      href: 'https://www.spinescore.com/' as const,
     },
     {
       title: 'Twizz Travel (Beta)',
@@ -237,6 +321,7 @@ export function SelectedProjects() {
       description:
         'A fun, AI-driven travel itinerary builder bridging the gap between automated trip planning and direct booking. Currently integrating with Ratehawk to handle end-to-end logistics, hotels, and local activities.',
       icon: Plane,
+      href: 'https://www.twizz.travel/' as const,
     },
     {
       title: 'Custom RPA Bots',
@@ -249,167 +334,48 @@ export function SelectedProjects() {
 
   return (
     <section
-      className="border-b border-border bg-white px-4 py-16 sm:px-6 sm:py-20 lg:px-8"
-      aria-labelledby="projects-heading"
+      className="border-b border-border bg-white px-4 pb-16 pt-8 sm:px-6 sm:pb-20 sm:pt-10 lg:px-8"
+      aria-label="Selected project builds"
     >
       <div className="mx-auto max-w-6xl">
-        <div className="mb-10 max-w-2xl lg:mb-12">
-          <h2
-            id="projects-heading"
-            className="text-2xl font-semibold tracking-tight text-ink-strong sm:text-3xl"
-          >
-            Selected Projects
-          </h2>
-        </div>
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-3 lg:gap-8">
-          {projects.map(({ title, tag, description, icon: Icon }) => (
-            <article
-              key={title}
-              className="group flex flex-col rounded-2xl border border-border bg-surface p-6 shadow-sm transition-colors duration-200 hover:border-slate-300 hover:shadow-md sm:p-8"
-            >
-              <div className="mb-5 flex h-12 w-12 items-center justify-center rounded-xl border border-border bg-white text-accent transition-colors duration-200 group-hover:border-accent/30">
-                <Icon className="h-6 w-6" strokeWidth={1.5} aria-hidden />
-              </div>
-              <h3 className="text-xl font-semibold tracking-tight text-ink-strong">
-                {title}
-              </h3>
-              <p className="mt-3 text-sm font-medium text-accent">{tag}</p>
-              <p className="mt-4 flex-1 leading-relaxed text-ink-secondary">
-                {description}
-              </p>
-            </article>
-          ))}
-        </div>
-      </div>
-    </section>
-  )
-}
+          {projects.map(({ title, tag, description, icon: Icon, ...rest }) => {
+            const body = (
+              <>
+                <div className="mb-5 flex h-12 w-12 items-center justify-center rounded-xl border border-border bg-white text-accent transition-colors duration-200 group-hover:border-accent/30">
+                  <Icon className="h-6 w-6" strokeWidth={1.5} aria-hidden />
+                </div>
+                <h3 className="text-xl font-semibold tracking-tight text-ink-strong">
+                  {title}
+                </h3>
+                <p className="mt-3 text-sm font-medium text-accent">{tag}</p>
+                <p className="mt-4 flex-1 leading-relaxed text-ink-secondary">
+                  {description}
+                </p>
+              </>
+            )
 
-function SpineScoreMock() {
-  return (
-    <div
-      className="relative overflow-hidden rounded-2xl border border-border bg-white shadow-lg"
-      role="img"
-      aria-label="Spine Score interface mock-up: score dashboard for a medical client"
-    >
-      <div className="flex items-center gap-2 border-b border-border bg-slate-50 px-4 py-2.5">
-        <span className="h-2.5 w-2.5 rounded-full bg-slate-300" />
-        <span className="h-2.5 w-2.5 rounded-full bg-slate-200" />
-        <span className="h-2.5 w-2.5 rounded-full bg-slate-200" />
-        <span className="ml-2 font-mono text-[10px] uppercase tracking-wider text-ink-secondary">
-          spine-score.app / clinical
-        </span>
-      </div>
-      <div className="grid gap-0 lg:grid-cols-5">
-        <div className="border-b border-border p-5 lg:col-span-2 lg:border-b-0 lg:border-r">
-          <p className="text-[10px] font-semibold uppercase tracking-widest text-ink-secondary">
-            Patient snapshot
-          </p>
-          <p className="mt-3 text-sm font-medium text-ink-strong">Assessment</p>
-          <div className="mt-4 space-y-3">
-            {['Posture', 'Mobility', 'Load symmetry'].map((label) => (
-              <div
-                key={label}
-                className="flex items-center justify-between border-b border-dashed border-border pb-2 text-xs text-ink-secondary last:border-0"
-              >
-                <span>{label}</span>
-                <span className="font-mono text-ink-strong">—</span>
-              </div>
-            ))}
-          </div>
-        </div>
-        <div className="bg-surface p-6 lg:col-span-3">
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-wider text-accent">
-                Spine Score
-              </p>
-              <p className="mt-1 text-2xl font-semibold tabular-nums tracking-tight text-ink-strong">
-                84
-                <span className="text-base font-medium text-ink-secondary">
-                  /100
-                </span>
-              </p>
-            </div>
-            <div className="rounded-lg border border-border bg-white p-2 text-accent">
-              <Activity className="h-6 w-6" strokeWidth={1.5} aria-hidden />
-            </div>
-          </div>
-          <div className="mt-8 flex h-28 items-end gap-1.5">
-            {[40, 52, 48, 61, 55, 70, 78, 84].map((h, i) => (
-              <div
-                key={i}
-                className="flex-1 rounded-t bg-gradient-to-t from-accent/20 to-accent/60"
-                style={{ height: `${h}%` }}
-              />
-            ))}
-          </div>
-          <p className="mt-4 text-[11px] leading-relaxed text-ink-secondary">
-            Read-only prototype · anonymized metrics · built for clinical review
-            workflows
-          </p>
-        </div>
-      </div>
-    </div>
-  )
-}
+            const href = 'href' in rest ? rest.href : undefined
+            if (href) {
+              return (
+                <a
+                  key={title}
+                  href={href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={`${projectCardClassName} cursor-pointer`}
+                >
+                  {body}
+                </a>
+              )
+            }
 
-export function CaseStudy() {
-  return (
-    <section
-      className="border-b border-border bg-surface px-4 py-16 sm:px-6 sm:py-20 lg:px-8"
-      aria-labelledby="case-heading"
-    >
-      <div className="mx-auto max-w-6xl">
-        <div className="grid gap-10 lg:grid-cols-12 lg:gap-12 lg:items-start">
-          <div className="lg:col-span-5">
-            <div className="inline-flex items-center gap-2 rounded-full border border-border bg-white px-3 py-1 text-xs font-medium text-ink-secondary">
-              <Stethoscope className="h-3.5 w-3.5 text-accent" aria-hidden />
-              Case study
-            </div>
-            <h2
-              id="case-heading"
-              className="mt-4 text-2xl font-semibold tracking-tight text-ink-strong sm:text-3xl"
-            >
-              Spine Score
-            </h2>
-            <p className="mt-4 leading-relaxed text-ink-secondary">
-              A rapid interface prototype for a medical client: clear scoring,
-              calm hierarchy, and data shaped for decision-making—not decoration.
-            </p>
-            <ul className="mt-6 space-y-3 text-sm text-ink-secondary">
-              <li className="flex gap-3">
-                <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-accent" />
-                <span>
-                  <strong className="font-semibold text-ink-strong">
-                    7-day rapid prototype
-                  </strong>{' '}
-                  — from brief to clickable review surface.
-                </span>
-              </li>
-              <li className="flex gap-3">
-                <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-accent" />
-                <span>
-                  <strong className="font-semibold text-ink-strong">
-                    Medical context
-                  </strong>{' '}
-                  — clinical tone, restrained motion, audit-friendly layout.
-                </span>
-              </li>
-              <li className="flex gap-3">
-                <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-accent" />
-                <span>
-                  <strong className="font-semibold text-ink-strong">
-                    Performance-first
-                  </strong>{' '}
-                  — lean bundle, sharp type, zero gimmicks.
-                </span>
-              </li>
-            </ul>
-          </div>
-          <div className="lg:col-span-7">
-            <SpineScoreMock />
-          </div>
+            return (
+              <article key={title} className={projectCardClassName}>
+                {body}
+              </article>
+            )
+          })}
         </div>
       </div>
     </section>
@@ -529,14 +495,35 @@ export function LeadForm() {
 }
 
 export function Footer() {
+  const { pathname } = useLocation()
+  const isDashboard = pathname === '/dashboard'
+
   return (
     <footer
-      className="border-t border-border bg-surface px-4 py-10 sm:px-6 lg:px-8"
+      className={
+        isDashboard
+          ? 'border-t border-white/10 bg-neutral-950 px-4 py-10 sm:px-6 lg:px-8'
+          : 'border-t border-border bg-surface px-4 py-10 sm:px-6 lg:px-8'
+      }
       role="contentinfo"
     >
-      <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-4 text-center text-sm text-ink-secondary sm:flex-row sm:text-left">
-        <p className="font-medium text-ink-strong">TWZ Solutions LLC</p>
-        <p>We&apos;re ready to build when you are!</p>
+      <div
+        className={
+          isDashboard
+            ? 'mx-auto flex max-w-6xl flex-col items-center justify-between gap-4 text-center text-sm text-white sm:flex-row sm:text-left'
+            : 'mx-auto flex max-w-6xl flex-col items-center justify-between gap-4 text-center text-sm text-ink-secondary sm:flex-row sm:text-left'
+        }
+      >
+        <p
+          className={
+            isDashboard ? 'font-medium text-white' : 'font-medium text-ink-strong'
+          }
+        >
+          TWZ Solutions LLC
+        </p>
+        <p className={isDashboard ? 'text-white' : undefined}>
+          We&apos;re ready to build when you are!
+        </p>
       </div>
     </footer>
   )

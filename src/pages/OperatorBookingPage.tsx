@@ -1,9 +1,7 @@
 import { Link } from 'react-router-dom'
 import { PageIntro } from '../components/PageIntro'
+import { CUSTOM_BUILD_INTAKE_CALENDAR_HREF } from '../lib/bookingLinks'
 import { getStripePaymentLinkBaseUrl } from '../lib/stripePublic'
-
-const GOOGLE_CALENDAR_BOOKING_HREF =
-  'https://calendar.app.google/bEf2vWW3VDqNp5w8A'
 
 export function OperatorBookingPage() {
   const stripeSubscribeHref = getStripePaymentLinkBaseUrl()
@@ -46,7 +44,7 @@ export function OperatorBookingPage() {
                 </li>
               </ol>
               <a
-                href={GOOGLE_CALENDAR_BOOKING_HREF}
+                href={CUSTOM_BUILD_INTAKE_CALENDAR_HREF}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="mt-8 inline-flex w-full items-center justify-center rounded-xl border-2 border-accent bg-transparent px-6 py-3.5 text-[0.9375rem] font-semibold text-accent transition-[transform,background-color,border-color,color] hover:-translate-y-0.5 hover:bg-accent/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"

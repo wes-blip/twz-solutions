@@ -20,8 +20,6 @@ export function useSupabase(): SupabaseClient {
         global: {
           fetch: async (input, init) => {
             const token = await getToken({ template: 'supabase' })
-            // Remove or redact after debugging — avoid logging full JWTs in production.
-            console.log('CLERK TOKEN:', token)
             const headers = new Headers(init?.headers ?? undefined)
             if (token) {
               headers.set('Authorization', `Bearer ${token}`)
